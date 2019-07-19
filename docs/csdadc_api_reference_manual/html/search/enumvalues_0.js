@@ -1,0 +1,21 @@
+var searchData=
+[
+  ['cy_5fcsdadc_5fbad_5fparam',['CY_CSDADC_BAD_PARAM',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40aa7a02c178b17bdc1bfdeceb957c8605c',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fcalibration_5ffail',['CY_CSDADC_CALIBRATION_FAIL',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40a122bba0dcb720698e60b25ade4baeca2',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fcontinuous',['CY_CSDADC_CONTINUOUS',['../group__group__csdadc__enums.html#ggaa708440f81ca9ab9606919c8a2b55f7bae0c3fb2f8053bf71a9fb27142c11a45d',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fcurrent_5fchan_5fstop',['CY_CSDADC_CURRENT_CHAN_STOP',['../group__group__csdadc__enums.html#ggad199a168031de6437292f791f0cdf2dea4de1ce8acb7107ba475168a6e04dae65',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fenabled_5fchan_5fstop',['CY_CSDADC_ENABLED_CHAN_STOP',['../group__group__csdadc__enums.html#ggad199a168031de6437292f791f0cdf2dea088ea36bd639e6fd37c937c1991e56f3',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fhw_5fbusy',['CY_CSDADC_HW_BUSY',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40a9e0abbf6f7142a2648a269729b4c30da',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fhw_5flocked',['CY_CSDADC_HW_LOCKED',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40ab4a144173fca48457ff0278b49f8d385',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fimmed_5fstop',['CY_CSDADC_IMMED_STOP',['../group__group__csdadc__enums.html#ggad199a168031de6437292f791f0cdf2deab91adfa5f0bf882046916e8873715147',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fnot_5finitialized',['CY_CSDADC_NOT_INITIALIZED',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40a4e9d17d2e3520c66d9e4d495bfc4b44e',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5foverflow',['CY_CSDADC_OVERFLOW',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40a0e47436549312d60a87158bc55c686aa',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5frange_5fvdda',['CY_CSDADC_RANGE_VDDA',['../group__group__csdadc__enums.html#gga9a51f670bcf385f7f2cbaa3f1491cc7fab08c3bcb3f06d7cd7c0e1bed9b17df8c',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5frange_5fvref',['CY_CSDADC_RANGE_VREF',['../group__group__csdadc__enums.html#gga9a51f670bcf385f7f2cbaa3f1491cc7fa624d61b3cc059e667dbb3271c3974163',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fresolution_5f10bit',['CY_CSDADC_RESOLUTION_10BIT',['../group__group__csdadc__enums.html#gga53be63f99ad2c3e775496df7c8957bc7a9332e87810c8e564b2fa586aede1193d',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fresolution_5f8bit',['CY_CSDADC_RESOLUTION_8BIT',['../group__group__csdadc__enums.html#gga53be63f99ad2c3e775496df7c8957bc7ac8f720a261773d574ff02c5d1dad34b4',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fsingle_5fshot',['CY_CSDADC_SINGLE_SHOT',['../group__group__csdadc__enums.html#ggaa708440f81ca9ab9606919c8a2b55f7ba68c510fb301d723422dd6ea2fbed7f93',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fsuccess',['CY_CSDADC_SUCCESS',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40a18e1e8f2c080c1697eaf0de8757a2ae4',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5ftimeout',['CY_CSDADC_TIMEOUT',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40aae95c664528d5b6d6ebfb336b5427f3d',1,'cy_csdadc.h']]],
+  ['cy_5fcsdadc_5fwrite_5fconfig_5ffail',['CY_CSDADC_WRITE_CONFIG_FAIL',['../group__group__csdadc__enums.html#gga2fb51073513c86f28616c29901c55a40ae6c915aefac8c8c0ab387beabfe25058',1,'cy_csdadc.h']]]
+];

@@ -1,6 +1,6 @@
 /***************************************************************************//**
 * \file cy_csdadc.c
-* \version 1.0.1
+* \version 2.0
 *
 * 
 * This file provides the ADC function implementation of the CSD HW block.
@@ -12,12 +12,16 @@
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
 *******************************************************************************/
+
+
 #include "cy_device_headers.h"
 #include "cy_syslib.h"
 #include "cy_sysclk.h"
 #include "cy_csdadc.h"
 #include "cy_gpio.h"
 #include "cy_csd.h"
+
+#if defined(CY_IP_MXCSDV2)
 
 
 /*******************************************************************************
@@ -76,8 +80,8 @@ static uint32_t Cy_CSDADC_StartAndWait(
 #define CY_CSDADC_STOP_BITS_POS                     (8u)
 #define CY_CSDADC_STOP_BITS_MASK                    (0x300u)
 
-#define CY_CSDADC_CHANNEL_MAX_NUM                   (32u)
-
+#define CY_CSDADC_RES_8_MAX_VAL                     ((uint32_t)(1uL << 8u) - 1u)
+#define CY_CSDADC_RES_10_MAX_VAL                    ((uint32_t)(1uL << 10u) - 1u)
 #define CY_CSDADC_RES_8_PLUS_1_MAX_VAL              (511u)
 #define CY_CSDADC_RES_10_PLUS_1_MAX_VAL             (2047u)
 
@@ -85,12 +89,10 @@ static uint32_t Cy_CSDADC_StartAndWait(
 
 #define CY_CSDADC_CHAN_DISCONNECT                   (0u)
 #define CY_CSDADC_CHAN_CONNECT                      (1u)
-/* No active CSDADC channel */
-#define CY_CSDADC_NO_CHANNEL                        (0xFFu)
 #define CY_CSDADC_VDDA_CHANNEL_MASK                 (0x80u)
 #define CY_CSDADC_VBUSB_CHANNEL_MASK                (0x40u)
 
-/* Cref common capacity in pF (truncated to decrease the resulting IDAC code) */
+/* Cref common capacity in fF (can vary up to 25% for different devices) */
 #define CY_CSDADC_CREF                              (21500u)
 #define CY_CSDADC_KILO                              (1000u)
 #define CY_CSDADC_MEGA                              (1000000u)
@@ -99,7 +101,6 @@ static uint32_t Cy_CSDADC_StartAndWait(
 #define CY_CSDADC_IDAC_MAX                          (127u)
 #define CY_CSDADC_IDACB_CONFIG                      (0x04000080u)
 
-#define CY_CSDADC_MEGA                              (1000000u)
 #define CY_CSDADC_MIN_SNSCLK_DIVIDER                (4u)
 #define CY_CSDADC_MAX_SNSCLK_DIVIDER                (0xFFFu)
 #define CY_CSDADC_MAX_SNSCLK_CYCLES                 (0xFFu)
@@ -243,18 +244,18 @@ static uint32_t Cy_CSDADC_StartAndWait(
 * Function Name: Cy_CSDADC_Init
 ****************************************************************************//**
 *
-* Captures the CSD HW block and configures it to the default state. This 
-* function is called by the application program prior to calling any other 
+* Captures the CSD HW block and configures it to the default state,
+* is called by the application program prior to calling any other 
 * function of the middleware.
 *
-* The function performs the following tasks:
+* The function:
 * * verifies input parameters
 * * copies the configuration structure to the context structure
 * * disconnects all input channels
 * * verifies the CSD HW block state
 * * locks the CSD HW block
-* * writes default configuration to the CSD HW block
-* * configures CSDADC middleware to a default state
+* * writes the default configuration to the CSD HW block
+* * configures the CSDADC middleware to the default state.
 *
 * \param config
 * The pointer to the CSDADC configuration structure.
@@ -266,11 +267,42 @@ static uint32_t Cy_CSDADC_StartAndWait(
 * The function returns the status of its operation.
 * * CY_CSDADC_SUCCESS     - The function performed successfully.
 * * CY_CSDADC_HW_LOCKED   - The CSD HW block is already in use by another CSD
-*                           function. The CSDADC can't be initialized 
-*                           right now. The user should wait until 
+*                           function. The CSDADC cannot be initialized 
+*                           right now. The user waits until 
 *                           the CSD HW block passes to the idle state.
-* * CY_CSDADC_BAD_PARAM   - A context pointer is equal to NULL.
+* * CY_CSDADC_BAD_PARAM   - The context pointer is NULL.
 *                           The function was not performed.
+*
+* \funcusage
+* 
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_Initialization
+* The 'cy_csdadc_context' variable used as the parameter of the
+* Cy_CSDADC_Init() and Cy_CSDADC_Enable() functions is declared
+* on the application layer according to the example below:<br>
+* \snippet csdadc/snippet/main.c snippet_csdadc_context_declaration
+* The 'CSD_csdadc_config' variable used as the parameter of the
+* Cy_CSDADC_Init() function is declared in the cycfg_capsense.h file if the
+* Device Configurator tool is used.
+* Refer to the \ref group_csdadc_configuration section for details. 
+* The 'CSDADC_csdadc_config' variable is declared and initialized on the
+* application layer if the third party IDE is used for development. 
+* 
+* The CSDADC_ISR_cfg variable is declared by the application
+* program according to the examples below:<br>
+* For CM0+ core:
+* \snippet csdadc/snippet/main.c snippet_m0p_adc_interrupt_source_declaration
+*
+* For CM4 core:
+* \snippet csdadc/snippet/main.c snippet_m4_adc_interrupt_source_declaration
+* 
+* The CSDADC interrupt handler is declared by the application program
+* according to the example below:
+* \snippet csdadc/snippet/main.c snippet_CSDADC_Interrupt
+* 
+* The CSDADC_HW is the pointer to the base register address of 
+* the CSD HW block. A macro for the pointer is in the cycfg_peripherals.h 
+* file defined as \<Csd_Personality_Name\>_HW. If no name is specified,
+* the default name is used csd_\<Block_Number\>_csd_\<Block_Number\>_HW.
 *
 *******************************************************************************/
 cy_en_csdadc_status_t Cy_CSDADC_Init(
@@ -313,29 +345,16 @@ cy_en_csdadc_status_t Cy_CSDADC_Init(
 * 
 * Initializes the CSDADC firmware modules. 
 * 
-* The Cy_CSDADC_Init() function is required to be called and 
-* the CSD HW block interrupt to be configured prior to calling this function.
-* The following steps should be performed for proper CSDADC initialization
+* The Cy_CSDADC_Init() function is to be called and the CSD HW block interrupt
+* is to be configured prior to calling this function.
+* The following steps are performed for proper CSDADC initialization:
 * * Capture the CSD HW block and initialize it to the default state. 
-* * Initialize CSDADC interrupt 
-* * Initialize the CSDADC firmware modules. 
-* 
-* See the function usage example below for details on usage.
-* 
-*     Cy_CSDADC_Init(&cy_csdadc_config,&cy_csdadc_context);
-* 
-*     Cy_SysInt_Init(&CSDADC_ISR_cfg, &CSDADC_Interrupt);
-*     NVIC_ClearPendingIRQ(CSDADC_ISR_cfg.intrSrc);
-*     NVIC_EnableIRQ(CSDADC_ISR_cfg.intrSrc);
-* 
-*     Cy_CSDADC_Enable(&cy_csdadc_context);
-*
-* The example of the cy_csdadc_context assignment 
-* see \ref group_csdadc_configuration.
+* * Initialize the CSDADC interrupt.
+* * Initialize the CSDADC firmware modules.
 *
 * This function is called by the application program prior to calling
-* any other function of the middleware. The function performs 
-* the following tasks:
+* any other function of the middleware. 
+* The function:
 * * Configures the CSD HW block to perform CSDADC conversions
 * * Calibrates the CSDADC for an accurate measurement
 *
@@ -344,7 +363,7 @@ cy_en_csdadc_status_t Cy_CSDADC_Init(
 * middleware configuration from the application program is possible. 
 * Do this by writing registers to the data structure and calling this 
 * function again. This is also done inside the Cy_CSDACD_WriteConfig() 
-* function, when an update configuration is needed.
+* function, when configuration must be updated.
 *
 * \param context
 * The pointer to the CSDADC context structure.
@@ -352,6 +371,35 @@ cy_en_csdadc_status_t Cy_CSDADC_Init(
 * \return
 * Returns the status of the initialization process. If CY_RET_SUCCESS is not
 * received, some of the initialization fails.
+*
+* \funcusage
+* 
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_Initialization
+* The 'cy_csdadc_context' variable used as the parameter of the
+* Cy_CSDADC_Init() and Cy_CSDADC_Enable() functions is declared
+* on the application layer according to the examples below:<br>
+* \snippet csdadc/snippet/main.c snippet_csdadc_context_declaration
+* The 'CSD_csdadc_config' variable used as the parameter of the
+* Cy_CSDADC_Init() function is declared in the cycfg_capsense.h file if the
+* Device Configurator tool is used.
+* Refer to the \ref group_csdadc_configuration section for details.
+* 
+* The CSDADC_ISR_cfg variable should be declared by the application
+* program according to the examples below:<br>
+* For CM0+ core:
+* \snippet csdadc/snippet/main.c snippet_m0p_adc_interrupt_source_declaration
+*
+* For CM4 core:
+* \snippet csdadc/snippet/main.c snippet_m4_adc_interrupt_source_declaration
+* 
+* The CSDADC interrupt handler is declared by the application program
+* according to the example below:
+* \snippet csdadc/snippet/main.c snippet_CSDADC_Interrupt
+* 
+* The CSDADC_HW is the pointer to the base register address of 
+* the CSD HW block. A macro for the pointer is in the cycfg_peripherals.h 
+* file defined as \<Csd_Personality_Name\>_HW. If no name specified,  
+* the default name is used csd_\<Block_Number\>_csd_\<Block_Number\>_HW.
 *
 *******************************************************************************/
 cy_en_csdadc_status_t Cy_CSDADC_Enable(cy_stc_csdadc_context_t * context)
@@ -657,10 +705,10 @@ static void Cy_CSDADC_Configure(cy_stc_csdadc_context_t * context)
 ****************************************************************************//**
 *
 * 
-* Resumes the middleware after sleep.
+* Resumes the middleware after CPU / System Deep Sleep.
 *
 * This function is used to resume the middleware operation after exiting 
-* Deep Sleep. In Deep Sleep power mode, the CSD HW block is powered off 
+* CPU / System Deep Sleep. After the CSD HW block has been powered off 
 * and an extra delay is required to establish correct operation of 
 * the CSD HW block.
 *
@@ -697,30 +745,36 @@ cy_en_csdadc_status_t Cy_CSDADC_Wakeup(const cy_stc_csdadc_context_t * context)
 * Function Name: Cy_CSDADC_DeepSleepCallback
 ****************************************************************************//**
 *
-* Handles Active to Deep Sleep power mode transitions for the CSDADC
+* Handles CPU active to CPU / System Deep Sleep power mode transitions for the CSDADC
 * middleware.
 *
-* Calling this function directly from the application program is 
-* not recommended. Instead, Cy_SysPm_DeepSleep() should be used for 
-* the Active to Deep Sleep power mode transition of the device.
+* Do not call this function directly from the application program. 
+* Instead, use Cy_SysPm_CpuEnterDeepSleep() for CPU active to CPU / System Deep Sleep power mode
+* transitions.
+* \note
+* After the CPU Deep Sleep transition, the device automatically goes 
+* to System Deep Sleep if all conditions are fulfilled: another core is 
+* in CPU Deep Sleep, all the peripherals are ready to System Deep Sleep, etc.
+* (see details in the device TRM).
 *
-* For proper operation of the CSDADC middleware during the Active to
-* Deep Sleep mode transition, a callback to this function should be registered
-* using the Cy_SysPm_RegisterCallback() function with CY_SYSPM_DEEPSLEEP
+* For proper operation of the CSDADC middleware during CPU active to 
+* CPU / System Deep Sleep mode transitions, a callback to this function is registered
+* using the Cy_SysPm_RegisterCallback() function with the CY_SYSPM_DEEPSLEEP
 * type. After the callback is registered, this function is called by the
-* Cy_SysPm_DeepSleep() function to prepare the middleware to the device
+*  Cy_SysPm_CpuEnterDeepSleep() function to prepare the middleware to the device
 * power mode transition.
 * 
-* When this function is called with CY_SYSPM_CHECK_READY as input, this
-* function returns CY_SYSPM_SUCCESS if no conversion is in progress. Otherwise
-* CY_SYSPM_FAIL is returned. If CY_SYSPM_FAIL status is returned, a device
+* When this function is called with CY_SYSPM_CHECK_READY as the input, this
+* function returns CY_SYSPM_SUCCESS if no conversion is in progress. Otherwise,
+* CY_SYSPM_FAIL is returned. If the CY_SYSPM_FAIL status is returned, a device
 * cannot change the power mode without completing the current conversion because
-* a transition to Deep Sleep during the conversion can disrupt the middleware
+* a transition to CPU / System Deep Sleep during the conversion can disrupt the middleware
 * operation.
 * 
-* For details of SysPm types and macros refer to
-* <a href="../../pdl_api_reference_manual/html/group__group__syspm.html" 
-* title="SysPm API Reference" >SysPm API Reference</a>.
+* For details of the SysPm types and macros, refer to the SysPm section of the 
+* PDL documentation
+* <a href="https://www.cypress.com/documentation/technical-reference-manuals/psoc-6-mcu-psoc-63-ble-architecture-technical-reference" 
+* title="PDL API Reference" >PDL API Reference</a>.
 * 
 * \param callbackParams
 * Refer to the description of the cy_stc_syspm_callback_params_t type in the
@@ -732,8 +786,8 @@ cy_en_csdadc_status_t Cy_CSDADC_Wakeup(const cy_stc_csdadc_context_t * context)
 * \return
 * Returns the status cy_en_syspm_status_t of the operation requested 
 * by the mode parameter:
-* * CY_SYSPM_SUCCESS  - Deep Sleep power mode can be entered.
-* * CY_SYSPM_FAIL     - Deep Sleep power mode cannot be entered.
+* * CY_SYSPM_SUCCESS  - CPU / System Deep Sleep power mode can be entered.
+* * CY_SYSPM_FAIL     - CPU / System Deep Sleep power mode cannot be entered.
 *
 *******************************************************************************/
 cy_en_syspm_status_t Cy_CSDADC_DeepSleepCallback(
@@ -744,7 +798,7 @@ cy_en_syspm_status_t Cy_CSDADC_DeepSleepCallback(
     cy_stc_csdadc_context_t * csdadcCxt = (cy_stc_csdadc_context_t *) callbackParams->context;
 
     if (CY_SYSPM_CHECK_READY == mode)
-    { /* Actions that should be done before entering the Deep Sleep mode */
+    { /* Actions that should be done before entering CPU / System Deep Sleep mode */
         if (CY_CSD_ADC_KEY == Cy_CSD_GetLockStatus(csdadcCxt->cfgCopy.base, csdadcCxt->cfgCopy.csdCxtPtr))
         {
             if (CY_CSDADC_SUCCESS != Cy_CSDADC_IsEndConversion(csdadcCxt))
@@ -779,17 +833,17 @@ cy_en_syspm_status_t Cy_CSDADC_DeepSleepCallback(
 * for use by other middleware.
 * 
 * This function performs the same tasks as the Cy_CSDADC_DeInit() function 
-* and is kept for API consistency among middlewares. Use the 
+* and is kept for API consistency among middleware. Use the 
 * Cy_CSDADC_Save()/Cy_CSDADC_Restore() functions to implement 
-* time-multiplexed mode instead of Cy_CSSADC_DeInit()/Cy_CSDADC_Init()
+* Time-multiplexed mode instead of the Cy_CSSADC_DeInit()/Cy_CSDADC_Init()
 * functions for further compatibility.
-* This function performs the following operations:
-* * Checks whether the CSDADC is in the idle state. If the CSDADC is busy, 
+* This function:
+* * Checks whether CSDADC is in the idle state. If the CSDADC is busy, 
 *   the function does nothing. <br>
-*   In the idle state, it:
-*     * Releases the CSD HW block.
-*     * Disconnects channel input pins from the analog muxbus B and configures
-*       them to default state.
+*   In the idle state:
+*     * Releases the CSD HW block
+*     * Disconnects channel input pins from analog muxbus B and configures
+*       them to the default state.
 *
 * \param context
 * The pointer to the CSDADC context structure.
@@ -797,6 +851,24 @@ cy_en_syspm_status_t Cy_CSDADC_DeepSleepCallback(
 * \return
 * Returns the status of the process. If CY_CSDADC_SUCCESS is not received,
 * the save process fails and a retry may be required.
+*
+* \funcusage
+*
+* An example of sharing the CSD HW block with the CapSense and CSDADC middleware.<br>
+* Declares the CapSense_ISR_cfg variable:
+* \snippet csdadc/snippet/main.c snippet_m4_capsense_interrupt_source_declaration
+* 
+* Declares the CSDADC_ISR_cfg variable:
+* \snippet csdadc/snippet/main.c snippet_m4_adc_interrupt_source_declaration
+* 
+* Defines the CapSense interrupt handler:
+* \snippet csdadc/snippet/main.c snippet_CapSense_Interrupt
+* 
+* Defines the CSDADC interrupt handler:
+* \snippet csdadc/snippet/main.c snippet_CSDADC_Interrupt
+* 
+* The part of the main.c FW flow:
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_TimeMultiplex
 *
 *******************************************************************************/
 cy_en_csdadc_status_t Cy_CSDADC_Save(cy_stc_csdadc_context_t * context)
@@ -932,6 +1004,11 @@ uint32_t Cy_CSDADC_GetResultVoltage(
 * Returns the status of the resume process. If CY_CSDADC_SUCCESS is not 
 * received, the resume process fails and a retry may be required.
 *
+* \funcusage
+* 
+* An example of sharing the CSD HW block by CapSense and CSDADC middleware:
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_TimeMultiplex
+*
 *******************************************************************************/
 cy_en_csdadc_status_t Cy_CSDADC_Restore(cy_stc_csdadc_context_t * context)
 {
@@ -943,10 +1020,11 @@ cy_en_csdadc_status_t Cy_CSDADC_Restore(cy_stc_csdadc_context_t * context)
     CSD_Type * ptrCsdBaseAdd = context->cfgCopy.base;
     cy_stc_csd_context_t * ptrCsdCxt = context->cfgCopy.csdCxtPtr;
     const cy_stc_csd_config_t csdCfg = CY_CSDADC_CSD_CONFIG_DEFAULT;
-    /* An approximate duration of the watchdog waiting loop in cycles*/
-    const uint32_t intrInitLoopDuration = 5uL;
-    /* An initial watchdog timeout in seconds */
-    const uint32_t initWatchdogTimeS = 1uL;
+
+    /* Number of cycle of one for() loop */
+    const uint32_t cyclesPerLoop = 5u;
+    /* Timeout in microseconds */
+    const uint32_t watchdogTimeoutUs = 10000u;
 
     if (NULL !=context)
     {
@@ -955,20 +1033,16 @@ cy_en_csdadc_status_t Cy_CSDADC_Restore(cy_stc_csdadc_context_t * context)
         if(CY_CSD_NONE_KEY == mvKey)
         {
             Cy_CSD_WriteReg(ptrCsdBaseAdd, CY_CSD_REG_OFFSET_INTR_MASK, CY_CSDADC_CSD_INTR_MASK_CLEAR_MSK);
+            Cy_CSD_WriteReg(ptrCsdBaseAdd, CY_CSD_REG_OFFSET_SEQ_START, CY_CSDADC_FSM_ABORT);
 
-            initStatus = Cy_CSD_GetConversionStatus(ptrCsdBaseAdd, ptrCsdCxt);
-            if(CY_CSD_BUSY == initStatus)
+            /* Initialize Watchdog Counter to prevent a hang */
+            watchdogCounter = (watchdogTimeoutUs * (context->cfgCopy.cpuClk / CY_CSDADC_MEGA)) / cyclesPerLoop;
+            do
             {
-                Cy_CSD_WriteReg(ptrCsdBaseAdd, CY_CSD_REG_OFFSET_SEQ_START, CY_CSDADC_FSM_ABORT);
-
-                /* Initialize Watchdog Counter to prevent a hang */
-                watchdogCounter = (initWatchdogTimeS * context->cfgCopy.periClk) / intrInitLoopDuration;
-                while((CY_CSD_BUSY == initStatus) && (0uL != watchdogCounter))
-                {
-                    initStatus = Cy_CSD_GetConversionStatus(ptrCsdBaseAdd, ptrCsdCxt);
-                    watchdogCounter--;
-                }
+                initStatus = Cy_CSD_GetConversionStatus(ptrCsdBaseAdd, ptrCsdCxt);
+                watchdogCounter--;
             }
+            while((CY_CSD_BUSY == initStatus) && (0u != watchdogCounter));
 
             /* Clear all interrupt pending requests */
             Cy_CSD_WriteReg(ptrCsdBaseAdd, CY_CSD_REG_OFFSET_INTR, CY_CSDADC_CSD_INTR_ALL_MSK);
@@ -1321,7 +1395,7 @@ static void Cy_CSDADC_DsInitialize(
     uint32_t vGain;
 
     /* Clear the result structure */
-    for (chIndex = 0u; chIndex < CY_CSDADC_CHANNEL_MAX_NUM; chIndex++)
+    for (chIndex = 0u; chIndex < CY_CSDADC_MAX_CHAN_NUM; chIndex++)
     {
             context->adcResult[chIndex].code = 0u;
             context->adcResult[chIndex].mVolts = 0u;
@@ -1468,22 +1542,22 @@ static void Cy_CSDADC_SetAdcChannel(
                 uint32_t state, 
                 const cy_stc_csdadc_context_t * context)
 {
-    cy_stc_csdadc_ch_pin_t const * ptr2adcIO = context->cfgCopy.ptrPin[chId];
+    cy_stc_csdadc_ch_pin_t const ptr2adcIO = context->cfgCopy.ptrPinList[chId];
     uint32_t  interruptState= Cy_SysLib_EnterCriticalSection();
     switch (state)
     {
     case CY_CSDADC_CHAN_CONNECT:
         /* Connect AMuxBusB to the selected port */
-        Cy_GPIO_SetHSIOM(ptr2adcIO->ioPcPtr, (uint32_t)ptr2adcIO->pin, HSIOM_SEL_AMUXB);
+        Cy_GPIO_SetHSIOM(ptr2adcIO.ioPcPtr, (uint32_t)ptr2adcIO.pin, HSIOM_SEL_AMUXB);
         /* Update port configuration register (drive mode) to High-Z Analog */
-        Cy_GPIO_SetDrivemode(ptr2adcIO->ioPcPtr, (uint32_t)ptr2adcIO->pin, CY_GPIO_DM_ANALOG);
+        Cy_GPIO_SetDrivemode(ptr2adcIO.ioPcPtr, (uint32_t)ptr2adcIO.pin, CY_GPIO_DM_ANALOG);
         break;
 
     /* Disconnection is a safe default state. Fall-through is intentional. */
     case CY_CSDADC_CHAN_DISCONNECT:
     default:
         /* Disconnect AMuxBusB from the selected port */
-        Cy_GPIO_SetHSIOM(ptr2adcIO->ioPcPtr, (uint32_t)ptr2adcIO->pin, HSIOM_SEL_GPIO);
+        Cy_GPIO_SetHSIOM(ptr2adcIO.ioPcPtr, (uint32_t)ptr2adcIO.pin, HSIOM_SEL_GPIO);
         break;
     }
     Cy_SysLib_ExitCriticalSection(interruptState);
@@ -1607,58 +1681,67 @@ static uint32_t Cy_CSDADC_StartAndWait(
 * Initializes the CSD HW block to perform an analog-to-digital conversion 
 * on input channels specified by chMask.
 * This is a non-blocking function. It initiates conversion only on the first 
-* input channel and does not wait for the conversion to be completed. 
-* The conversion on subsequent channels are initiated by interrupt service 
-* routine of the CSDADC middleware. Therefore, Cy_CSDADC_IsEndConversion() 
+* input channel and does not wait for the conversion to complete. 
+* The conversion on subsequent channels are initiated by the interrupt service 
+* routine of the CSDADC middleware. Therefore, the Cy_CSDADC_IsEndConversion() 
 * function must be used to check the status of conversion to ensure 
 * the previously initiated conversion is complete prior to initiating 
-* other tasks. These include reading the ADC result, initiating a new 
-* conversion on the same or a different channel, or a calibration or 
+* other tasks. These include: reading the ADC result, initiation of a new 
+* conversion on the same or a different channel, or calibration or 
 * stopping a CSDADC conversion.
 *
-* In a single shot mode, the CSDADC middleware will perform one conversion 
-* on all channels specified by chMask argument and will stop. In this mode, 
-* the Cy_CSDADC_IsEndConversion() function returns the CY_CSDADC_SUCCESS status
-* after conversion on all channels is completed. Otherwise it returns 
-* CY_CSDADC_HW_BUSY state. To get information on the last channel on which 
-* the conversion has been completed, use 
-* the Cy_CSDADC_ConversionStatus() function.
+* In Single-shot mode, the CSDADC middleware performs one conversion 
+* on all channels specified by the chMask argument and stops. 
+* The Cy_CSDADC_IsEndConversion() function returns the CY_CSDADC_SUCCESS status
+* after conversion on all channels completes. Otherwise, it returns the
+* CY_CSDADC_HW_BUSY state. To get information on the latest conversion, 
+* use the Cy_CSDADC_GetConversionStatus() function.
 *
-* In the continuous mode, this function continuously initiates conversions
+* In Continuous mode, this function continuously initiates conversions
 * on channels specified by chMask (i.e. once a conversion is completed 
-* on all channels specified by chMask, the CSDADC MW will initiate next set
-* of conversions). In this mode, the Cy_CSDADC_IsEndConversion() function 
-* always returns CY_CSDADC_HW_BUSY status. To get information on the latest 
-* conversion in this mode, use the Cy_CSDADC_ConversionStatus() functions. 
+* on all channels specified by chMask, the CSDADC MW initiates a next set
+* of conversions). The Cy_CSDADC_IsEndConversion() function 
+* always returns the CY_CSDADC_HW_BUSY status. To get information on the latest 
+* conversion, use the Cy_CSDADC_GetConversionStatus() functions. 
 
 * \param mode
 * The desired mode of conversion:
-* * CY_CSDADC_SINGLE_SHOT - only one conversion cycle of all chosen channels
-* * CY_CSDADC_CONTINUOUS - continuous mode
+* * CY_CSDADC_SINGLE_SHOT - Only one conversion cycle of all chosen channels.
+* * CY_CSDADC_CONTINUOUS - Continuous mode.
 *
 * \param chMask
-* The bit mask with set bits of specified channels to be converted.
+* The bit mask with set bits of specified channels to convert.
 *
 * \param context
 * The pointer to the CSDADC middleware context structure.
 *
 * \return
 * The function returns the status of its operation.
-* * CY_CSDADC_SUCCESS         - A conversion has started.
+* * CY_CSDADC_SUCCESS         - A conversion is started.
 * * CY_CSDADC_HW_BUSY         - A conversion is not started. A previously 
 *                               initiated conversion is in progress or 
 *                               the CSD HW block is in use by another 
 *                               application.
 * * CY_CSDADC_BAD_PARAM       - A conversion is not started. An invalid mode 
-*                               value or chMask is equal to 0 or the context 
-*                               pointer is equal to NULL.
-* * CY_CSDADC_NOT_INITIALIZED - CSDADC needs to be initialized by using the 
+*                               value or chMask is 0 or the context 
+*                               pointer is NULL.
+* * CY_CSDADC_NOT_INITIALIZED - CSDADC to be initialized by using the 
 *                               Cy_CSDADC_Init() and Cy_CSDADC_Enable() 
 *                               functions.
 *
+* \funcusage
+*
+* An example of the conversion executing in Single-shot mode:
+* \snippet csdadc/snippet/main.c snippet_csdadc_chResult_declaration
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_RunConversionSingleShot
+*
+* An example of the conversion executing in Continuous mode:
+* \snippet csdadc/snippet/main.c snippet_csdadc_chResult_declaration
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_RunConversionContinuous
+*
 *******************************************************************************/
 cy_en_csdadc_status_t Cy_CSDADC_StartConvert(
-                uint32_t mode, 
+                cy_en_csdadc_conversion_mode_t mode,
                 uint32_t chMask, 
                 cy_stc_csdadc_context_t * context)
 {
@@ -1667,7 +1750,7 @@ cy_en_csdadc_status_t Cy_CSDADC_StartConvert(
 
     CY_ASSERT_L1(NULL != context);
 
-    if ((NULL == context) || ((mode != CY_CSDADC_SINGLE_SHOT_MODE) && (mode != CY_CSDADC_CONTINUOUS_MODE)) || (chMask == 0u))
+    if ((NULL == context) || ((mode != CY_CSDADC_SINGLE_SHOT) && (mode != CY_CSDADC_CONTINUOUS)) || (chMask == 0u))
     {
         result = CY_CSDADC_BAD_PARAM;
     }
@@ -1690,7 +1773,7 @@ cy_en_csdadc_status_t Cy_CSDADC_StartConvert(
                 context->chMask = chMask;
                 /* Set the conversion mode bits of the CSDADC status byte */
                 context->status &= (uint16_t)~(uint16_t)CY_CSDADC_CONV_MODE_MASK;
-                context->status |= (uint16_t)(mode << CY_CSDADC_CONV_MODE_BIT_POS);
+                context->status |= (uint16_t)(((uint32_t)mode) << CY_CSDADC_CONV_MODE_BIT_POS);
 
                 /* Choose the first desired channel to convert */
                 chId = Cy_CSDADC_GetNextCh(0u, context);
@@ -1707,8 +1790,8 @@ cy_en_csdadc_status_t Cy_CSDADC_StartConvert(
                     context->activeCh = chId;
                 }
 
-                /* Clear the conversion counter */
-                context->counter = 0u;
+                /* Set the cycle counter to zero and the number of the first channel to convert to the conversion counter */
+                context->counter = (uint32_t)(((uint32_t)chId) << CY_CSDADC_COUNTER_CHAN_POS);
                 /* Clear stop bits */
                 context->status &= (uint16_t)~CY_CSDADC_STOP_BITS_MASK;
                 /* Set the busy bit of the CSDADC status byte */
@@ -1835,25 +1918,31 @@ cy_en_csdadc_status_t Cy_CSDADC_StopConvert(
 *
 * The function returns the status of the CSDADC's operation.
 *
-* This function should be used to ensure the CSDADC is in idle state prior 
-* to initiating a conversion, a calibration, or a configuration change. 
-* Initiating any ADC operation while the CSDADC is in the busy state could 
+* This function is used to ensure the CSDADC is in the idle state prior 
+* to initiating a conversion, calibration, or configuration change. 
+* Initiating any ADC operation while the CSDADC is in the busy state may 
 * produce unexpected results from the ADC.
 *
 * \param context
 * The pointer to the CSDADC context.
 *
 * \return
-* The function returns the status of the ADC's operation.
+* The function returns the status of the ADC operation.
 * * CY_CSDADC_SUCCESS  - The ADC is not busy, so
 *                        a new conversion can be initiated.
-* * CY_CSDADC_HW_BUSY  - A previously initiated conversion is in progress.
+* * CY_CSDADC_HW_BUSY  - The previously initiated conversion is in progress.
 * * CY_CSDADC_OVERFLOW - The most recent conversion caused an overflow. The root 
 *                        cause of the overflow may be the previous calibration 
 *                        values being invalid or VDDA and VDDA configuration 
 *                        setting mismatch. Perform a re-calibration or set 
 *                        the appropriate VDDA value to avoid this error 
 *                        condition.
+*
+* \funcusage
+*
+* An example of the Cy_CSDADC_IsEndConversion() function usage:
+* \snippet csdadc/snippet/main.c snippet_csdadc_chResult_declaration
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_RunConversionSingleShot
 *
 *******************************************************************************/
 cy_en_csdadc_status_t Cy_CSDADC_IsEndConversion(
@@ -1888,34 +1977,40 @@ cy_en_csdadc_status_t Cy_CSDADC_IsEndConversion(
 
 
 /*******************************************************************************
-* Function Name: Cy_CSDADC_ConversionStatus
+* Function Name: Cy_CSDADC_GetConversionStatus
 ****************************************************************************//**
 *
 * The function returns a current CSDADC conversion status.
 *
-* In the continuous mode, this function returns a combination of current channel 
+* In Continuous mode, this function returns a combination of the current channel 
 * number and current cycle number. This function can be used to identify whether 
-* a cycle of conversion is completed or identify a latest input on which 
-* a conversion has been completed so a result can be read.
-* In the single-shot mode, only the latest input on which a conversion has been 
-* completed is returned. 
+* a cycle of conversion completed or identify the latest input where 
+* the conversion completed so a result can be read.
+* In Single-shot mode, only the latest input where a conversion completed is returned. 
 * A conversion cycle number is incremented by the CSDADC after each cycle 
-* of conversion has been completed. A channel number is assigned to 
-* an each input channel.
-* A new start conversion request resets conversion cycle number to zero and 
-* a channel number to the first enabled channel in the chMask parameter.
+* of conversion completes. A channel number is assigned to each input channel.
+* A new start-conversion request resets the conversion cycle number to zero and 
+* the channel number to the first enabled channel in the chMask parameter.
+*
+* \param context
+* The pointer to the CSDADC context.
 *
 * \return
-* The function returns the combination of a conversion number and a 
-* channel number.
-* * Bit[0-26]  A current cycle number in the continuous mode. In the single 
+* The function returns a combination of the conversion number and channel number.
+* * Bit[0-26]  The current cycle number in Continuous mode. In the single 
 *              shot mode, it is equal to 0u.
 * * Bit[27-31] A current input channel number inside the current cycle.
 * * If the context parameter is equal to NULL, then the function 
 *   returns \ref CY_CSDADC_COUNTER_BAD_PARAM.
 *
+* \funcusage
+*
+* An example of the Cy_CSDADC_GetConversionStatus() function usage:
+* \snippet csdadc/snippet/main.c snippet_csdadc_chResult_declaration
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_RunConversionContinuous
+*
 *******************************************************************************/
-uint32_t Cy_CSDADC_ConversionStatus(const cy_stc_csdadc_context_t * context)
+uint32_t Cy_CSDADC_GetConversionStatus(const cy_stc_csdadc_context_t * context)
 {
     uint32_t result;
 
@@ -2072,18 +2167,58 @@ static uint8_t Cy_CSDADC_GetNextCh(
 * 
 * The CSDADC middleware does not initialize or modify the priority 
 * of interrupts. For the middleware operation, the application program 
-* must configure CSD interrupt and assign interrupt vector to 
-* the Cy_CSDACD_InterruptHandler() function. Refer to 
-* the \ref group_csdadc_configuration for an example.
-* In case the CSD HW block is shared by more than one middleware, 
-* the CSD interrupt vector should be initialized to the interrupt handler 
+* must configure the CSD interrupt and assign the interrupt vector to 
+* the Cy_CSDACD_InterruptHandler() function.
+* If the CSD HW block is shared by more than one middleware, 
+* the CSD interrupt vector is initialized to the interrupt handler 
 * function of the middleware that is active in the application program.
+*
+* \param base
+* The pointer to the base register address of the CSD HW block. A macro for 
+* the pointer can be found in cycfg_peripherals.h file defined as 
+* \<Csd_Personality_Name\>_HW. If no name is specified, the default name
+* is used csd_\<Block_Number\>_csd_\<Block_Number\>_HW.
 *
 * \param CSDADC_Context
 * The pointer to the CSDADC context structure.
 *
+* \funcusage
+* An example of the ISR initialization:
+*
+* The CSDADC_ISR_cfg variable is declared by the application
+* program according to the examples below:<br>
+* For CM0+ core:
+* \snippet csdadc/snippet/main.c snippet_m0p_adc_interrupt_source_declaration
+*
+* For CM4 core:
+* \snippet csdadc/snippet/main.c snippet_m4_adc_interrupt_source_declaration
+* 
+* The CSDADC interrupt handler should be declared by the application program
+* according to the example below:
+* \snippet csdadc/snippet/main.c snippet_CSDADC_Interrupt
+*
+* Then, the application program configures and enables the CSD block interrupt
+* between calls of the Cy_CapSense_Init() and Cy_CapSense_Enable() functions:
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_Initialization
+*
+* An example of sharing the CSD HW block by the CapSense and CSDADC middleware.<br>
+* Declares the CapSense_ISR_cfg variable:
+* \snippet csdadc/snippet/main.c snippet_m4_capsense_interrupt_source_declaration
+* 
+* Declares the CSDADC_ISR_cfg variable:
+* \snippet csdadc/snippet/main.c snippet_m4_adc_interrupt_source_declaration
+* 
+* Defines the CapSense interrupt handler:
+* \snippet csdadc/snippet/main.c snippet_CapSense_Interrupt
+* 
+* Defines the CSDADC interrupt handler:
+* \snippet csdadc/snippet/main.c snippet_CSDADC_Interrupt
+* 
+* The part of the main.c FW flow:
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_TimeMultiplex  
+*
 *******************************************************************************/
-void Cy_CSDADC_InterruptHandler(void * CSDADC_Context)
+void Cy_CSDADC_InterruptHandler(const CSD_Type * base, void * CSDADC_Context)
 {
     cy_stc_csdadc_context_t * csdadcCxt = (cy_stc_csdadc_context_t *) CSDADC_Context;
 
@@ -2102,6 +2237,8 @@ void Cy_CSDADC_InterruptHandler(void * CSDADC_Context)
     uint8_t adcFsmStatus;
     uint8_t tmpChId;
 
+    (void)base;
+    
     /* Mask all CSD HW block interrupts (disable all interrupts) */
     Cy_CSD_WriteReg(csdadcCxt->cfgCopy.base, CY_CSD_REG_OFFSET_INTR_MASK, CY_CSDADC_CSD_INTR_MASK_CLEAR_MSK);
 
@@ -2168,9 +2305,6 @@ void Cy_CSDADC_InterruptHandler(void * CSDADC_Context)
                                                                                         (uint32_t)csdadcCxt->codeMax;
                     csdadcCxt->adcResult[tmpChId].mVolts = (uint16_t)(tmpResult);
 
-                    /* Disconnect the current input channel */
-                    Cy_CSDADC_SetAdcChannel((uint32_t)csdadcCxt->activeCh, CY_CSDADC_CHAN_DISCONNECT, csdadcCxt);
-                    csdadcCxt->activeCh = CY_CSDADC_NO_CHANNEL;
                     /* Check for current channel stop */
                     if ((uint16_t)CY_CSDADC_CURRENT_CHAN_STOP ==
                             ((csdadcCxt->status & CY_CSDADC_STOP_BITS_MASK) >> CY_CSDADC_STOP_BITS_POS))
@@ -2204,6 +2338,8 @@ void Cy_CSDADC_InterruptHandler(void * CSDADC_Context)
                                 }
                                 /* For continuous mode, start from the first channel again */
                                 tmpChId = Cy_CSDADC_GetNextCh(0u, csdadcCxt);
+                                /* Disconnect the current input channel */
+                                Cy_CSDADC_SetAdcChannel((uint32_t)csdadcCxt->activeCh, CY_CSDADC_CHAN_DISCONNECT, csdadcCxt);
                                 /* Connect desired input channel */
                                 Cy_CSDADC_SetAdcChannel((uint32_t)tmpChId, CY_CSDADC_CHAN_CONNECT, csdadcCxt);
                                 csdadcCxt->activeCh = tmpChId;
@@ -2222,6 +2358,8 @@ void Cy_CSDADC_InterruptHandler(void * CSDADC_Context)
                         }
                         else
                         {
+                            /* Disconnect the current input channel */
+                            Cy_CSDADC_SetAdcChannel((uint32_t)csdadcCxt->activeCh, CY_CSDADC_CHAN_DISCONNECT, csdadcCxt);
                             /* Connect the next input channel set in chMask*/
                             Cy_CSDADC_SetAdcChannel((uint32_t)tmpChId, CY_CSDADC_CHAN_CONNECT, csdadcCxt);
                             csdadcCxt->activeCh = tmpChId;
@@ -2345,6 +2483,8 @@ void Cy_CSDADC_InterruptHandler(void * CSDADC_Context)
         csdadcCxt->status &= (uint16_t)~(uint16_t)CY_CSDADC_STATUS_BUSY_MASK;
     }
 }
+
+#endif /* CY_IP_MXCSDV2 */
 
 
 /* [] END OF FILE */

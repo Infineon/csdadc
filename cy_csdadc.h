@@ -1,6 +1,6 @@
 /***************************************************************************//**
 * \file cy_csdadc.h
-* \version 1.0.1
+* \version 2.0
 *
 * \brief
 * This file provides function prototypes and constants specific to the CSDADC
@@ -16,19 +16,54 @@
 /**
 * \mainpage Cypress CSDADC Middleware Library
 *
-* The CSDADC provides an API that enables ADC functionality of the
-* CSD HW block. It can be useful for a devices that do not include 
-* another ADC option. 
+* The CSDADC middleware is the Cypress ADC solution that uses the CSD HW block.
+* The CSD HW block is mainly used to implement the touch sense applications and
+* proximity sensors (refer to the
+* <a href="https://cypresssemiconductorco.github.io/capsense/capsense_api_reference_manual/html/index.html">
+* <b>CapSense Middleware API Reference Guide</b></a>), but can also
+* be used to implement the ADC, which is especially useful for the devices that
+* do not include another hardware option to implement the ADC.
+* CSDADC provides the following measurement capabilities:
+* * Voltage monitoring on multiple external channels.  Any GPIO that can be
+*   connected to AMUX-B (refer to the particular device datasheet for information)
+*   can be an input to the CSDADC under software control. 
+* * Voltage monitoring on AMUX-B.
+* * Device supply voltage (VDDA) monitoring without the need of explicitly connecting
+*   VDDA to a GPIO input of the ADC. This capability can be used to measure battery
+*   voltages and/or change VDDA-dependent parameters of the ADC during run-time.
+*
+* The listed capabilities are making the CSDADC useful for a variety of
+* applications, including home appliances, automotive, IoT, and industrial
+* applications. The CSDADC middleware can use the same CSD HW block with other
+* CSD-based middleware (CapSense, CSDIDAC, etc) in time-multiplexed manner.
+*
+* <b>Features:</b>
+* * ADC with 8- and 10-bit resolution
+* * Two input measurement ranges: GND to VREF and GND to VDDA
+* * Two operation modes: Continuous conversion and Single-shot conversion
 *
 ********************************************************************************
-* \section section_capsense_general General Description
+* \section section_csdadc_general General Description
 ********************************************************************************
+*
+* Include cy_csdadc.h to get access to all functions and other declarations in
+* this library.
+* The \ref group_csdadc_quick_start is offered in this API Reference Guide.
+*
+* Refer to the \ref section_csdadc_toolchain for the compatibility
+* information.
+*
+* Refer to the \ref group_csdadc_changelog for the differences between the
+* Middleware versions.
+*
+* The \ref group_csdadc_changelog also describes the impact of the changes to
+* your code.
 *
 * The CSD HW block enables multiple sensing capabilities on PSoC devices 
-* including self-cap and mutual-cap capacitive touch sensing solutions, 
+* including the self-cap and mutual-cap capacitive touch sensing solutions, 
 * a 10-bit ADC, IDAC, and Comparator. The CSD driver is a low-level 
 * peripheral driver, a wrapper to manage access to the CSD HW block. 
-* Each middleware access to the CSD HW block is through the CSD Driver. 
+* Any middleware access to the CSD HW block happens through the CSD Driver. 
 * 
 * The CSD HW block can support only one function at a time. However, all  
 * supported functionality (like CapSense, CSDADC, etc.) can be 
@@ -41,15 +76,12 @@
 * \image html capsense_solution.png "CapSense Solution" width=800px
 * \image latex capsense_solution.png
 * 
-* This section describes only CSDADC middleware. Refer to the corresponding 
+* This section describes only the CSDADC middleware. Refer to the corresponding 
 * sections for documentation of other middleware supported by the CSD HW block.
-* The CSDADC library is designed to be used with the CSD driver.
+* The CSDADC library is designed to use with the CSD driver.
 * The application program does not need to interact with the CSD driver 
 * and/or other drivers such as GPIO or SysClk directly. All of that is 
-* configured and managed by middleware.
-* 
-* Include cy_csdadc.h to get access to all functions and other declarations 
-* in this library.
+* configured and managed by the middleware.
 *
 * The CSDADC API is described in the following sections:
 * * \ref group_csdadc_macros
@@ -57,109 +89,335 @@
 * * \ref group_csdadc_enums
 * * \ref group_csdadc_functions
 *
-* <b>Features:</b>
-* * ADC with 8- and 10-bit resolution
-* * Two input measurement ranges: GND to VREF and GND to VDDA
-* * Two operation modes: Continuous conversion and single shot conversion
-*
 * \warning
-* I2C transactions during ADC conversions could lead to measurement result 
+* I2C transactions during ADC conversions may lead to measurement result 
 * distortions. Perform ADC conversions and I2C communications in 
-* time-sharing mode.
+* Time-sharing mode.
 *
+********************************************************************************
+* \section group_csdadc_quick_start Quick Start Guide
+********************************************************************************
+*
+* Cypress CSDADC middleware can be used in various Development Environments
+* such as ModusToolbox, MBED, etc. Refer to the \ref section_csdadc_toolchain.
+* The quickest way to get started is using the Code Examples.
+* Cypress Semiconductor continuously extends its portfolio of the code examples
+* at the <a href="http://www.cypress.com"><b>Cypress Semiconductor website</b></a>
+* and at the <a href="https://github.com/cypresssemiconductorco">
+* <b>Cypress Semiconductor GitHub</b></a>.
+*
+* This quick start guide assumes that the environment is configured to use the
+* PSoC 6 Peripheral Driver Library(psoc6pdl) for development and the
+* PSoC 6 Peripheral Driver Library(psoc6pdl) is included in the project.
+*
+* The following steps are required to set up the CSDADC and to run the
+* measurement:
+* 1. Set up the CSDADC configuration manually or by using the Device Configurator
+*    as described in the \ref group_csdadc_configuration section.
+* \note
+* Put the CSDADC name to the Alias field of the CSD resource if the
+* Device Configurator is used.
+* 
+* 2. Include cy_csdadc.h to get access to all CSDADC API and cy_pdl.h to get
+*    access to API of peripheral drivers according to the example below:
+* \snippet csdadc/snippet/main.c snippet_required_includes
+* 3. If you use the MBED OS, include the cycfg.h file to get access to the
+*    System Configuration:
+* \snippet csdadc/snippet/main.c snippet_mbed_required_includes
+* 4. Declare the 'cy_csdadc_context' variable as per example below:
+* \snippet csdadc/snippet/main.c snippet_csdadc_context_declaration
+* 5. Declare and initialize the CSDADC_ISR_cfg variable as per example below:
+* \snippet csdadc/snippet/main.c snippet_m4_adc_interrupt_source_declaration
+* 6. Define the CSDADC interrupt handler according to the example below:
+* \snippet csdadc/snippet/main.c snippet_CSDADC_Interrupt
+* 7. Update the main() routine with the following code:
+* \snippet csdadc/snippet/main.c snippet_csdadc_chResult_declaration
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_RunConversion
+*
+********************************************************************************
 * \section group_csdadc_configuration Configuration Considerations
+********************************************************************************
 *
-* The CSDADC operates on the top of the CSD driver. The CSD driver has
-* some prerequisites for proper operation. Refer to the "CSD (CapSense
-* Sigma Delta)" section of the PDL API Reference Manual.
-* In the ModusToolbox IDE, the Device Configurator CSD personality should 
-* be used for CSDADC MW initial configuration.
-* If the user checks the "Enable CSDADC" checkbox, all required 
-* configuration parameters appear. The user can set a number
-* of input channels, a resolution, a measurement range, and all 
-* other parameters needed for CSDADC middleware configuration. 
-* All the parameters in CSD personality have pop-ups with detailed descriptions.
-* If the user does not use ModusToolbox IDE, the user could create 
-* a CSDADC configuration structure manually by using this API Ref Guide 
-* and the configuration structure prototype define in the cy_csdadc.h file. 
+* The CSDADC middleware operates on the top of the CSD Driver included in the
+* PSoC 6 Peripheral Driver Library (psoc6pdl). Refer to the "CSD(CapSense
+* Sigma Delta)" section of the PSoC 6 Peripheral Driver Library (psoc6pdl) API
+* Reference Manual.
+* This Configuration Considerations section guides how to set up the
+* CSDADC middleware for the operation with the following parameters:
+* 1. Device VDDA: 3.3V.
+* 2. Device Peri Clock frequency: 48MHz.
+* 3. Desired Number of Input Channels: 2 (Ch-1 is assigned to P6[2],
+     Ch-2 is assigned to P6[3]).
+* 4. Desired Resolution: 10 bit.
+* 5. Desired Measurement Range: GND to VDDA.
+* 
+* There are two methods for the CSDADC Middleware configuration:
+* 1. \ref group_csdadc_mtb_configuring
+* 2. \ref group_csdadc_manual_configuring
 *
-* <b>Building CSDADC </b>
+* Generation of the initialization code using the
+* <a href="https://www.cypress.com/ModusToolboxDeviceConfig">
+* <b>ModusToolbox Device Configurator Tool </b></a> which is part of the
+* <a href="https://www.cypress.com/products/modustoolbox-software-environment">
+* <b>ModusToolbox</b></a>, greatly simplifies the PSoC configuration.
+* The <a href="https://www.cypress.com/ModusToolboxDeviceConfig"><b>ModusToolbox
+* Device Configurator Tool </b></a> provides the user interface to set up and
+* automatically generate the initialization code (including analog routing) and
+* configuration structures.
+* 
+* Manual implementation of the initialization code (including analog routing)
+* and configuration structures is recommended for expert Users only. This will
+* include the code for the following settings which in case of the
+* Device Configurator usage are generated automatically based upon the settings
+* entered in its UI:
+*  * Assigning the Peripheral Clock Divider.
+*  * Configuring the HSIOM_AMUX_SPLIT_CTL switches to route signal from input
+*    pins configured as the CSDADC channels to the CSD HW block.
+*  * Declaration and initialization of the CSDADC configuration structure.
+*  * Declaration and initialization of the CSD HW driver context structure.
+*  * Definition of the of the CSD HW block base address.
 *
-* The CSDADC middleware should be enabled for CM4 core of the PSoC 6 
-* by Middleware Selector in the ModusToolbox.
-* The CSDADC middleware used for CM0+ core is not supported in the 
-* ModusToolbox, but the user can create CM0+ configuration 
-* with CSDADC middleware manually.
+********************************************************************************
+* \subsection group_csdadc_mtb_configuring Use ModusToolbox Device Configurator Tool to generate initialization code
+********************************************************************************
+*
+* The following steps are required to generate the initialization code using the
+* <a href="https://www.cypress.com/ModusToolboxDeviceConfig">
+* <b>ModusToolbox Device Configurator Tool </b></a>:
+* 1. Launch the ModusToolbox Middleware Selector and enable the CSD ADC
+*    middleware. This step is required only if the ModusToolbox IDE is used.
+*    Otherwise, ensure the CSDADC Middleware is included in your project.
+* 2. Launch the ModusToolbox Device Configurator Tool.
+* 3. Switch to the System tab. Configure the CLK_PERI frequency to achieve 48MHz
+*    (you may need to change the FLL or PLL frequency) and set the VDDA voltage
+*    to 3.3V in Power/MCU Personality.
+* 4. Switch to the Peripherals tab (#1 on figure below). Enable the CSD personality
+*    under System (#2 on figure below) and enter Alias (#3 on figure below).
+*    We use CSDADC in \ref group_csdadc_quick_start.
+* 5. Go to the Parameters Pane and configure the CSD Personality:
+*  * Assign the peripheral clock divider by using the Clock
+*    combo box(#4 on figure below). Any free divider can be used.
+*  * Set the Enable CSDADC check box (#5 on figure below).
+*  * Configure the CSDADC with the desired parameters per
+*    \ref group_csdadc_configuration (#5 on figure below).
+*  * Assign the CSDADC Channels to pins per \ref group_csdadc_configuration
+*    (#6 on figure below).
+* 6. Perform File->Save to generate initialization code.
+*
+* \image html csdadc_config.png "CSDADC configuration" width=1175px
+* \image latex csdadc_config.png
+*
+* Now, all required CSDADC initialization code and configuration prerequisites
+* will be generated:
+* * The Peripheral Clock Divider assignment and analog routing are parts of
+*   the init_cycfg_all() routine. Place the call of the init_cycfg_all() function
+*   before using any CSDADC API functions to ensure initialization of all
+*   external resources required for the CSDADC operation. 
+*   Refer to the main() routine code snippet in
+*   \ref group_csdadc_quick_start
+* * The CSDADC configuration structure declaration in the
+*   cycfg_peripherals.h file and its initialization in the
+*   cycfg_peripherals.c file. The variable name is
+*   \<Alias_Name\>_csdadc_config.
+* * The CSD HW driver context structure declaration in the
+*   cycfg_peripherals.h file and its initialization in the
+*   cycfg_peripherals.c file. The variable name is
+*   cy_csd_\<CSD_Block_Index\>_context.
+* * The CSD HW block base address definition is in the
+*   cycfg_peripherals.h file.
+* * The definition name is \<Alias_Name\>_HW.
+*
+* The generated code will be available under the GeneratedSource folder.
+*
+* Refer to \ref group_csdadc_quick_start section for the application layer code
+* required to set up CSDADC and run the measurement.
+*
+********************************************************************************
+* \subsection group_csdadc_manual_configuring Implement the initialization code manually
+********************************************************************************
+*
+* The steps required to implement the initialization code manually:
+* 1. Launch the ModusToolbox Middleware Selector and enable the
+*    CSD ADC middleware. This step is required only if the ModusToolbox IDE
+*    is used.
+*    Otherwise, ensure the CSDADC Middleware is included in your project.
+* 2. Define the CSD HW block base address. See the code example below:
+* \snippet csdadc/snippet/main.c snippet_csd_hw_definition  
+* 3. Declare the CSD HW driver context structure and initialize the
+*    lockKey field with the CY_CSD_NONE_KEY value. See the code example below:
+* \snippet csdadc/snippet/main.c snippet_csd_context_declaration
+* 4. Declare the CSDADC configuration structure and initialize it according
+*    to the desired parameters. See the code example below:
+* \snippet csdadc/snippet/main.c snippet_csd_div_index_definition
+* \snippet csdadc/snippet/main.c snippet_csdadc_config_declaration
+* 5. Assign the Peripheral Clock Divider to the CSD HW block.
+*    See the code example below and refer to the main() routine code snippet in
+*    \ref group_csdadc_quick_start
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_Clock_Assignment
+* 6. Set the configuration of the HSIOM_AMUX_SPLIT_CTL switches to route signal
+*    from input pins configured as the CSDADC channels to the
+*    CSD HW block. The AMUX_SPLIT_CTL[4] switches are closed to connect
+*    port P6 with the CSD HW block. Refer to the
+*    <a href="http://www.cypress.com/trm218176"><b>Technical Reference Manual
+*    (TRM)</b></a> for more information regarding the analog interconnection.
+*    See the code example below and refer to the main() routine code snippet in
+*    \ref group_csdadc_quick_start
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_Amux_Configuration
+*
+* Refer to \ref group_csdadc_quick_start section for the application layer code
+* required to set up CSDADC and run the measurement.
+*
+********************************************************************************
+* \section group_csdadc_use_cases Use Cases
+********************************************************************************
+*
+* This section provides descriptions and links to additional documentation for
+* some specific CSDADC use cases.
+*
+********************************************************************************
+* \subsection group_csdadc_low_power_design Low Power Design
+********************************************************************************
+*
+* The CSD HW block and CSDADC middleware can operate in CPU active and CPU sleep 
+* power modes. It is also 
+* possible to switch between low power and ultra low power system modes.
+* The CSD HW block interrupt can wake-up the CPU from sleep mode.
+* In System Deep Sleep and Hibernate power modes, the CSD HW block is 
+* powered off and CSDADC conversions are not performed.
+* When the device wakes up from CPU / System Deep Sleep, the CSD HW block resumes operation 
+* without the need for re-initialization and the CSDADC conversions 
+* can be continued with a configuration that was set before CPU / System Deep Sleep 
+* transition. When the device wakes up from System Hibernate
+* power mode, the CSD HW block does not retain configuration and CSDADC requires
+* re-initialization.
+* If the user performs some communications to transmit CSDADC results via I2C, 
+* UART etc., transitions to CPU sleep, Deep Sleep or Hibernate modes are performed
+* with recommendations both for CSDADC and communications' drivers/middleware.
 *
 * \note
-* If building the project with CSDADC outside the ModusToolbox environment, 
-* the path to the CSDADC middleware should be manually specified 
-* in the project settings or in the Makefile.
+* 1. CPU can seamlessly enter and exit CPU sleep mode while the CSD HW block is busy.
+*    However, do not put the CSD HW block into block low power mode during the
+*    conversion as it may lead to unexpected behavior.
 *
-* <b>Initializing CSDADC </b>
+* 2. Entering CPU Deep Sleep mode does not mean the device enters 
+*    System Deep Sleep. For more detail about switching to System Deep Sleep,
+*    refer to the device TRM.
 *
-* To initialize a CSDADC, the CSDADC context structure should
-* be declared by the user. An example of the CSDADC context structure
-* declaration is below:
+* 3. The analog start-up time for the CSD HW block is 25 us. Initiate
+*    any kind of conversion only after 25 us from System Deep Sleep / Hibernate exit.
+*   
+* Refer to the Cy_CSDADC_DeepSleepCallback() function description and to the
+* SysPm (System Power Management) driver documentation for the low power design
+* considerations.
 *
-*         cy_stc_csdadc_context_t cy_csdadc_context;
+* <b>Sleep mode</b><br>
+* The CSD HW block can operate in the CPU sleep mode. The user can start CSDADC
+* and move a CPU into sleep mode. After every conversion, the CPU is 
+* woken-up by the CSD interrupt, the results are read, and the CPU goes to
+* sleep again to reduce a power consumption. After the whole conversion cycle
+* completes, the user can read results, proccess them, and start a new cycle. Then, 
+* the user configures the CSDADC middleware as described in 
+* \ref group_csdadc_configuration, and updates the main() routine with 
+* the following code: 
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_Sleep
 *
-* Note that the name "cy_csdadc_context" is shown only for a reference.
-* Any other name can be used instead. 
+* <b>Deep Sleep mode</b><br>
+* To use the CSDADC middleware in the CPU / System Deep Sleep mode, the user configures
+* a wake-up source (e.g. a pin, WDT, LPC or another entities, that are active 
+* in CPU / System Deep Sleep mode), configures the CSDADC middleware as described in 
+* \ref group_csdadc_configuration, configures CSDADC and other drivers' and 
+* middleware's (if presented) Deep Sleep Callback structures, registers 
+* callbacks, and updates the main() routine with the following code: 
+* \snippet csdadc/snippet/main.c snippet_CSDADC_DeepSleep_structures
+* \snippet csdadc/snippet/main.c snippet_Cy_CSDADC_DeepSleep
 *
-* The CSDADC configuration structure is generated by the Device
-* Configurator CSD personality and should then be passed to the Cy_CSDADC_Init()
-* as well as the context structure.
+********************************************************************************
+* \subsection group_csdadc_calibration ADC calibration
+********************************************************************************
 *
-* Apart of the context structure allocation, the user should create and
-* register an interrupt function for the CSDADC proper operation.
-* This interrupt function will be called for every interrupt generated
-* by the CSD HW block. For instance, it should be as described below:
+* Refer to the Cy_CSDADC_Calibrate() function description for the CSDADC
+* calibration considerations. Cy_CSDADC_Enable() performs first-time
+* calibration at the start of CSDADC operation. Periodical re-calibrations
+* are required to keep the measurement results accurate.
 *
-*         static void CSDADC_Interrupt(void)
-*         {
-*             Cy_CSDADC_InterruptHandler(&cy_csdadc_context);
-*         }
+********************************************************************************
+* \subsection group_csdadc_time_multiplexing Time-multiplexing operation of CSDADC and CapSense
+********************************************************************************
 *
-* This interrupt function and an allocated interrupt configuration structure
-* should be declared as below:
+* Refer to the Cy_CSDADC_Save() and Cy_CSDADC_Restore() functions descriptions
+* to implementat the time-multiplexing operation of CSDADC and CapSense by
+* using a common CSD HW block.
 *
-*         static void CSDADC_Interrupt(void);
-*         const cy_stc_sysint_t CSDADC_ISR_cfg =
-*         {
-*             .intrSrc = csd_interrupt_IRQn,
-*             .intrPriority = 7u,
-*         };
+********************************************************************************
+* \section section_csdadc_toolchain Supported Software and Tools
+********************************************************************************
 *
-* In the main function, the interrupt function should be registered as below:
+* This version of the CSDADC Middleware was validated for the compatibility 
+* with the following Software and Tools:
+* 
+* <table class="doxtable">
+*   <tr>
+*     <th>Software and Tools</th>
+*     <th>Version</th>
+*   </tr>
+*   <tr>
+*     <td>ModusToolbox Software Environment</td>
+*     <td>2.0</td>
+*   </tr>
+*   <tr>
+*     <td>- ModusToolbox Device Configurator</td>
+*     <td>2.0</td>
+*   </tr>
+*   <tr>
+*     <td>- ModusToolbox CSD Personality in Device Configurator</td>
+*     <td>2.0</td>
+*   </tr>
+*   <tr>
+*     <td>PSoC6 Peripheral Driver Library (PDL)</td>
+*     <td>1.2.0</td>
+*   </tr>
+*   <tr>
+*     <td>GCC Compiler</td>
+*     <td>7.2.1</td>
+*   </tr>
+*   <tr>
+*     <td>IAR Compiler</td>
+*     <td>8.32</td>
+*   </tr>
+*   <tr>
+*     <td>Arm Compiler 6</td>
+*     <td>6.11</td>
+*   </tr>
+*   <tr>
+*     <td>MBED OS</td>
+*     <td>5.13.1</td>
+*   </tr>
+*   <tr>
+*     <td>FreeRTOS</td>
+*     <td>10.0.1</td>
+*   </tr>
+* </table>
 *
-*         Cy_SysInt_Init(&CSDADC_ISR_cfg, &CSDADC_Interrupt);
-*         NVIC_ClearPendingIRQ(CSDADC_ISR_cfg.intrSrc);
-*         NVIC_EnableIRQ(CSDADC_ISR_cfg.intrSrc);
+********************************************************************************
+* \section section_csdadc_update Update to Newer Versions
+********************************************************************************
+* Consult \ref group_csdadc_changelog to learn about the design impact of the
+* newer version. Set up your environment in accordance with
+* \ref section_csdadc_toolchain. You might need to re-generate the configuration
+* structures for either the device initialization code or the middleware
+* initialization code.
 *
+* Ensure:
+* * The specified version of the ModusToolbox Device Configurator and
+*   the CSD personality are used to re-generate the device configuration.
+* * The toolchains are set up properly for your environment per the settings
+*   outlined in the Supported Software and Tools.
+* * The project is re-built once the the toolchains are configured and the
+*   configuration is completed.
 *
-* \section group_csdadc_more_information More Information
-* For more information, refer to the following documents:
-*
-* * <a href="http://www.cypress.com/trm218176"><b>Technical Reference Manual
-* (TRM)</b></a>
-*
-* * <a href="http://www.cypress.com/ds218787"><b>PSoC 63 with BLE Datasheet
-* Programmable System-on-Chip datasheet</b></a>
-*
-* * <a href="http://www.cypress.com/an210781"><b>AN210781 Getting Started
-* with PSoC 6 MCU with Bluetooth Low Energy (BLE) Connectivity</b></a>
-*
-* * <a href="../../capsense_api_reference_manual.html"><b>CapSense MW API 
-* Reference</b></a>
-*
-* * <a href="../../csdidac_api_reference_manual.html"><b>CSDIDAC MW API 
-* Reference</b></a>
-*
-* * <a href="../../pdl_api_reference_manual/html/group__group__csd.html"><b>CSD 
-* Driver API Reference</b></a>
-*
+********************************************************************************
 * \section group_csdadc_MISRA MISRA-C Compliance
+********************************************************************************
 *
 * The Cy_CSDADC library has the following specific deviations:
 *
@@ -175,15 +433,15 @@
 *     <td>A</td>
 *     <td>A conversion should not be performed between a pointer to object 
 *         and an integer type.</td>
-*     <td>Such a conversion is performed with CSDADC context in two cases: the
-*         interrupt handler and DeepSleepCallback function.
-*         Both cases are verified on correct operation.</td>
+*     <td>Such a conversion is performed with the CSDADC context in two cases:
+*         the interrupt handler and DeepSleepCallback function.
+*         Both cases are verified on the correct operation.</td>
 *   </tr>
 *   <tr>
 *     <td>1.2</td>
 *     <td rowspan=2> R</td>
 *     <td rowspan=2> Constant: Dereference of NULL pointer.</td>
-*     <td rowspan=2> These violations are reported as a result of using 
+*     <td rowspan=2> These violations are reported to result from using 
 *         offset macros of the CSD Driver with corresponding documented 
 *         violation 20.6. Refer to the CSD Driver API Ref Guide.</td>
 *   </tr>
@@ -192,61 +450,174 @@
 *   </tr>
 * </table>
 *
+********************************************************************************
+* \section section_csdadc_errata Errata
+********************************************************************************
+*
+* This section lists the known problems with the CSDADC middleware:
+* 
+* <table class="doxtable">
+*   <tr><th>Cypress ID</th><th>Known Issue</th><th>Workaround</th></tr>
+*   <tr>
+*     <td>319100</td>
+*     <td>
+*         The GPIO simultaneous operation with unrestricted strength and
+*         frequency creates noise that can affect the CSDADC operation.
+*     </td>
+*     <td>
+*         Refer to the errata section of the device datasheet for details.<br>
+*         <a href="http://www.cypress.com/ds218787"><b>PSoC 63 with BLE 
+*         Datasheet Programmable System-on-Chip</b></a>
+*     </td>
+*   </tr>
+* </table>
+* 
+********************************************************************************
 * \section group_csdadc_changelog Changelog
+********************************************************************************
+*
 * <table class="doxtable">
 *   <tr><th>Version</th><th>Changes</th><th>Reason for Change</th></tr>
 *   <tr>
-*     <td rowspan="2">1.0.1</td>
-*     <td>Documentation updates</td>
-*     <td>Improve user's experience</td>
+*     <td rowspan="8">2.0</td>
+*     <td>Made public the CY_CSDADC_NO_CHANNEL macro</td>
+*     <td>Defect fixing</td>
 *   </tr>
 *   <tr>
-*     <td>Added limitation to the module.mk file</td>
-*     <td>Support only devices with the CSD HW block</td>
+*     <td>Changed the Cy_CSDADC_InterruptHandler() function prototype. 
+*         Added function argument: const CSD_Type * base </td>
+*     <td>User experience improvement</td>
+*   </tr>
+*   <tr>
+*     <td>Changed the Cy_CSDADC_StartConvert() function prototype. 
+*         Changed the mode argument type from uint32_t to
+*         cy_en_csdadc_conversion_mode_t</td>
+*     <td>User experience improvement</td>
+*   </tr>
+*   <tr>
+*     <td>Renamed function Cy_CSDADC_ConversionStatus() to 
+*         Cy_CSDADC_GetConversionStatus()</td>
+*     <td>User experience improvement</td>
+*   </tr>
+*   <tr>
+*     <td>The CSDADC MW sources are enclosed with the conditional compilation to 
+*         ensure a successful compilation for non-CSDADC-capable devices</td>
+*     <td>A compilation for non-CSDADC-capable devices</td>
+*   </tr>
+*   <tr>
+*     <td>After conversion, the ADC channel is still connected to the
+*         CSD HW block, and disconnected only prior to new channel connection</td>
+*     <td>Defect fixing</td>
+*   </tr>
+*   <tr>
+*     <td>Changed the cy_stc_csdadc_config_t structure: the ptrPin field is
+*         replaced with the ptrPinList field. It is a pointer to the array of
+*         the size determined by the numChannels field of this structure versus
+*         the ptrPin field that was an array of pointers with fixed
+*         \ref CY_CSDADC_MAX_CHAN_NUM size.
+*     <td>User experience improvement</td>
+*   </tr>
+*   <tr>
+*     <td>Added the cpuClk field to the cy_stc_csdadc_config_t structure.
+*         Changed the software watchdog counter calculation in the Cy_CSDADC_Restore() 
+*         function where cpuClk is used instead of periClk.
+*     <td>Defect fixing</td>
+*   </tr>
+*   <tr>
+*     <td rowspan="2">1.0.1</td>
+*     <td>Improvements to documentation</td>
+*     <td>User experience improvement</td>
+*   </tr>
+*   <tr>
+*     <td>Forbidden usage of CSDADC for non-CSDADC-capable devices in module.mk 
+*         file</td>
+*     <td>A Compilation for non-CSDADC-capable devices</td>
 *   </tr>
 *   <tr>
 *     <td>1.0</td>
-*     <td>The initial version.</td>
+*     <td>The initial version</td>
 *     <td></td>
 *   </tr>
 * </table>
 *
+********************************************************************************
+* \section group_csdadc_more_information More Information
+********************************************************************************
+*
+* For more information, refer to the following documents:
+*
+* * <a href="https://www.cypress.com/products/modustoolbox-software-environment">
+*   <b>ModusToolbox Software Environment, Quick Start Guide, Documentation,
+*   and Videos</b></a>
+*
+* * <a href="https://github.com/cypresssemiconductorco"><b>CSDADC Middleware
+*   Code Example for MBED OS</b></a>
+*
+* * <a href="https://github.com/cypresssemiconductorco"><b>CSDADC Middleware
+*   Code Examples at GITHUB</b></a>
+*
+* * <a href="https://www.cypress.com/ModusToolboxDeviceConfig"><b>ModusToolbox
+*   Device Configurator Tool Guide</b></a>
+*
+* * <a href="https://cypresssemiconductorco.github.io/capsense/capsense_api_reference_manual/html/index.html">
+*   <b>CapSense Middleware API Reference Guide</b></a>
+*
+* * <a href="https://cypresssemiconductorco.github.io/csdidac/csdidac_api_reference_manual/html/index.html">
+*   <b>CSDIDAC Middleware API Reference Guide</b></a>
+*
+* * <a href="https://github.com/cypresssemiconductorco.github.io/psoc6pdl/pdl_api_reference_manual/html/index.html">
+*   <b>PDL API Reference</b></a>
+*
+* * <a href="https://www.cypress.com/documentation/technical-reference-manuals/psoc-6-mcu-psoc-63-ble-architecture-technical-reference">
+*   <b>PSoC 6 Technical Reference Manual</b></a>
+*
+* * <a href="http://www.cypress.com/ds218787">
+*   <b>PSoC 63 with BLE Datasheet Programmable System-on-Chip datasheet</b></a>
+*
+* * <a href="http://www.cypress.com"><b>Cypress Semiconductor</b></a>
+*
+* \note
+* The links to another software component’s documentation (middleware and PDL) 
+* point to GitHub to the latest available version of the software. 
+* To get documentation of the specified version, download from GitHub and unzip 
+* the component archive. The documentation is available in the <i>docs</i> folder.
+*
 * \defgroup group_csdadc_macros Macros
 * \brief
-* This section describes the CSDADC Macros. These Macros can be used for 
-* checking maximum channel number, for defining CSDADC conversion mode and 
-* for checking CSDADC conversion counters. A detailed information about
-* macros see in every macro description. 
+* This section describes the CSDADC Macros. These Macros can be used to 
+* check the maximum channel number for defining CSDADC conversion mode and 
+* for checking CSDADC conversion counters. Detailed information about the
+* macros is available in each macro description. 
 *
 * \defgroup group_csdadc_enums Enumerated types
 * \brief
 * Describes the enumeration types defined by the CSDADC. These enumerations 
-* can be used for checking CSDADC functions' return statuses,
+* can be used for checking the CSDADC functions return statuses
 * for defining a CSDADC resolution and an input voltage range and for 
-* defining start and stop conversion modes.  A detailed information about
-* enumerations seen in every enumeration description. 
+* defining Start and Stop conversion modes.  Detailed information about
+* the enumerations is available in each enumeration description. 
 *
 * \defgroup group_csdadc_data_structures Data Structures
 * \brief
 * Describes the data structures defined by the CSDADC. The CSDADC MW 
-* use structures for input channel pins, conversion results, 
+* use structures for the input channel pins, conversion results, 
 * MW configuration and context. The pin structure is included into 
-* the configuration structure and both of them can be defined by the 
+* the configuration structure and both can be defined by the 
 * user with the CSD personality in Device Configurator or manually if  
-* the user don't use ModusToolbox.
+* the user does not use ModusToolbox.
 * The result structure is included into the context structure and 
-* contains voltages and ADC codes for all 32 input channel of the more 
+* contains voltages and ADC codes for all 32 input channels of more 
 * recent conversions. Besides the result structure, the context structure 
-* contains a copy of the configuration structure, current CSDADC MW state 
-* data and calibration data. The context structure should be
-* allocated by the user and passed to all CSDADC MW functions. 
-* CSDADC MW structure sizes are shown in the table below:
+* contains a copy of the configuration structure, the current CSDADC MW state 
+* data and calibration data. The context structure is allocated by the user 
+* and passed to all CSDADC MW functions. 
+* The CSDADC MW structure sizes are shown in the table below:
 * 
 * <table class="doxtable">
 *   <tr><th>Structure</th><th>Size in bytes (w/o padding)</th></tr>
 *   <tr>
 *     <td>cy_stc_csdadc_ch_pin_t</td>
-*     <td>9</td>
+*     <td>5</td>
 *   </tr>
 *   <tr>
 *     <td>cy_stc_csdadc_config_t</td>
@@ -294,7 +665,7 @@
 *   <tt>void CallbackFunction((void *) ptrCxt);</tt>
 *
 * * Assign the function to the CSDADC context structure by using the function
-*   Cy_CSDADC_RegisterCallback;
+*   Cy_CSDADC_RegisterCallback();
 *
 * * Use the Cy_CSDADC_UnRegisterCallback() API to un-register the callback
 *   function that was previously assigned.
@@ -302,45 +673,38 @@
 * \} 
 */
 
+
 #if !defined(CY_CSDADC_H)
 #define CY_CSDADC_H
 
 #include "cy_device_headers.h"
 #include "cy_csd.h"
 
+#if defined(CY_IP_MXCSDV2)
 
 /* The C binding of definitions if building with the C++ compiler */
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#ifndef CY_IP_MXCSDV2
-    #error "The CapSense middleware is not supported on this device"
-#endif
 
 /**
 * \addtogroup group_csdadc_macros
 * \{
 */
 /** Middleware major version */
-#define CY_CSDADC_MDW_VERSION_MAJOR             (1)
+#define CY_CSDADC_MW_VERSION_MAJOR              (2)
 
 /** Middleware minor version */
-#define CY_CSDADC_MDW_VERSION_MINOR             (0)
+#define CY_CSDADC_MW_VERSION_MINOR              (0)
 
 /** CSDADC PDL ID */
 #define CY_CSDADC_ID                            (CY_PDL_DRV_ID(0x43u))
 
 /** The CSDADC max channels number */
 #define CY_CSDADC_MAX_CHAN_NUM                  (32u)
-/** The CSDADC max code value for 8 bit resolution */
-#define CY_CSDADC_RES_8_MAX_VAL                     ((uint32_t)(1uL << 8u) - 1u)
-/** The CSDADC max code value for 10 bit resolution */
-#define CY_CSDADC_RES_10_MAX_VAL                    ((uint32_t)(1uL << 10u) - 1u)
-/** The parameter for the single shot mode of the CSDADC start conversion function */
-#define CY_CSDADC_SINGLE_SHOT_MODE              (0u)
-/** The parameter for the continuous mode of the CSDADC start conversion function */
-#define CY_CSDADC_CONTINUOUS_MODE               (1u)
+/** The parameter for no active CSDADC channel indication */
+#define CY_CSDADC_NO_CHANNEL                    (0xFFu)
 
 /* Conversion counter defines */
 /** The channel counter mask for the CSDADC operation counter */
@@ -355,6 +719,15 @@ extern "C" {
 #define CY_CSDADC_MEASUREMENT_FAILED            (0xFFFFFFFFuL)
 
 /** \} group_csdadc_macros */
+
+
+/* 
+* These defines are obsolete and kept for backward compatibility only. 
+* They will be removed in the future versions.
+*/
+#define CY_CSDADC_MDW_VERSION_MAJOR             (CY_CSDADC_MW_VERSION_MAJOR)
+#define CY_CSDADC_MDW_VERSION_MINOR             (CY_CSDADC_MW_VERSION_MINOR)
+
 
 /***************************************
 * Enumerated Types and Parameters
@@ -454,7 +827,7 @@ typedef enum
 * mode, conversion will repeated for all specified channels until the user 
 * stop them by using the Cy_CSDADC_StopConvert() function. To read 
 * conversion data in the continuous mode without getting over-written, 
-* the user should call the Cy_CSDADC_ConversionStatus() function. */
+* the user should call the Cy_CSDADC_GetConversionStatus() function. */
 typedef enum
 { 
     CY_CSDADC_SINGLE_SHOT         = 0u,      /**< The single shot mode */
@@ -501,7 +874,12 @@ typedef enum
 * \{
 */
 
-/** CSDADC pin structure */
+/**
+* CSDADC pin structure. This structure contains information about Port/Pin
+* assignment of a particular CSDADC channel. The CSDADC channel can be assigned to
+* any GPIO that supports the static connection to the AMUX-B (refer to the
+* particular device datasheet for information).
+*/
 typedef struct {
     GPIO_PRT_Type * ioPcPtr;                /**< Pointer to channel IO PC register */
     uint8_t pin;                            /**< Channel IO pin */
@@ -510,10 +888,11 @@ typedef struct {
 /** CSDADC configuration structure */
 typedef struct
 {
-    const cy_stc_csdadc_ch_pin_t * ptrPin[CY_CSDADC_MAX_CHAN_NUM];
+    const cy_stc_csdadc_ch_pin_t * ptrPinList;
                                             /**< Array of pointers to the channel IO structures */
     CSD_Type * base;                        /**< Pointer to the CSD HW Block */
     cy_stc_csd_context_t * csdCxtPtr;       /**< Pointer to the CSD context driver */
+    uint32_t cpuClk;                        /**< CPU Clock in Hz */
     uint32_t periClk;                       /**< Peri Clock in Hz */
     int16_t vref;                           /**< Voltage Reference in mV */
     uint16_t vdda;                          /**< Analog Power Voltage in mV */
@@ -620,7 +999,7 @@ cy_en_csdadc_status_t Cy_CSDADC_RegisterCallback(
 cy_en_csdadc_status_t Cy_CSDADC_UnRegisterCallback(
                 cy_stc_csdadc_context_t * context);
 cy_en_csdadc_status_t Cy_CSDADC_StartConvert(
-                uint32_t mode, 
+                cy_en_csdadc_conversion_mode_t mode,
                 uint32_t chMask,
                 cy_stc_csdadc_context_t * context);
 cy_en_csdadc_status_t Cy_CSDADC_StopConvert(
@@ -628,7 +1007,7 @@ cy_en_csdadc_status_t Cy_CSDADC_StopConvert(
                 cy_stc_csdadc_context_t * context);
 cy_en_csdadc_status_t Cy_CSDADC_IsEndConversion(
                 const cy_stc_csdadc_context_t * context);
-uint32_t Cy_CSDADC_ConversionStatus(
+uint32_t Cy_CSDADC_GetConversionStatus(
                 const cy_stc_csdadc_context_t * context);
 cy_en_csdadc_status_t Cy_CSDADC_Calibrate(
                 cy_stc_csdadc_context_t * context);
@@ -647,14 +1026,40 @@ uint32_t Cy_CSDADC_GetResultVoltage(
                 const cy_stc_csdadc_context_t * context);
 uint32_t Cy_CSDADC_MeasureVdda(cy_stc_csdadc_context_t * context);
 uint32_t Cy_CSDADC_MeasureAMuxB(cy_stc_csdadc_context_t * context);
-void Cy_CSDADC_InterruptHandler(void * CSDADC_Context);
+void Cy_CSDADC_InterruptHandler(const CSD_Type * base, void * CSDADC_Context);
 
 /** \} group_csdadc_functions */
+
+/*******************************************************************************
+* Function Name: Cy_CSDADC_ConversionStatus
+****************************************************************************//**
+*
+* This function is obsolete and kept for backward compatibility only. 
+* The Cy_CSDADC_GetConversionStatus() function should be used instead.
+*
+* \param context
+* The pointer to the CSDADC context.
+*
+* \return
+* The function returns a combination of the conversion number and channel number.
+* * Bit[0-26]  The current cycle number in Continuous mode. In the single 
+*              shot mode, it is equal to 0u.
+* * Bit[27-31] A current input channel number inside the current cycle.
+* * If the context parameter is equal to NULL, then the function 
+*   returns \ref CY_CSDADC_COUNTER_BAD_PARAM.
+*
+*******************************************************************************/
+__STATIC_INLINE uint32_t Cy_CSDADC_ConversionStatus(const cy_stc_csdadc_context_t * context)
+{
+    return(Cy_CSDADC_GetConversionStatus(context));
+}
 
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+
+#endif /* CY_IP_MXCSDV2 */
 
 #endif /* CY_CSDADC_H */
 

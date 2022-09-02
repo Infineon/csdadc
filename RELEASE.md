@@ -1,14 +1,11 @@
-# Cypress CSDADC Middleware Library 2.0
+# CYPRESS™ CSDADC Middleware Library 2.10
 
 ### What's Included?
 
-Please refer to the [README.md](./README.md) and the [API Reference Guide](https://cypresssemiconductorco.github.io/csdadc/csdadc_api_reference_manual/html/index.html) for a complete description of the CSDADC Middleware.
-The revision history of the CSDADC Middleware is also available on the [API Reference Guide Changelog](https://cypresssemiconductorco.github.io/csdadc/csdadc_api_reference_manual/html/index.html#group_csdadc_changelog).
+For more information, refer to [README.md](./README.md) and the [API Reference Guide](https://infineon.github.io/csdadc/csdadc_api_reference_manual/html/index.html).
+The revision history of the CSDADC Middleware is also available on the [API Reference Guide Changelog](https://infineon.github.io/csdadc/csdadc_api_reference_manual/html/index.html#group_csdadc_changelog).
 New in this release:
-* Updated CSDADC configuration structure to be aligned with the list of parameters in ModusToolbox CSD personality
-* After conversion, the ADC channel is still connected to the CSD HW block, and disconnected only prior to new channel connection
-* Added the CY_CSDADC_NO_CHANNEL macro
-* Added the errata section
+* Added the support of PSoC™ 4 CAPSENSE™ Forth Generation devices
 
 ### Known Issues
 | Problem | Workaround |
@@ -16,39 +13,47 @@ New in this release:
 | GPIO simultaneous operation with unrestricted strength and frequency creates noise that can affect CSDADC operation | Refer to the errata section of the device datasheet for details |
 
 ### Defect Fixes
-* Fixing a compilation error for non CSDADC-capable devices: CSDADC MW sources are enclosed with the conditional compilation
-* Added a cpuClk field to the CSDADC configuration structure
-* Changed the Cy_CSDADC_StartConvert() and Cy_CSDADC_InterruptHandler() functions prototype
-* Renamed function Cy_CSDADC_ConversionStatus() to Cy_CSDADC_GetConversionStatus()
+* Improved input parameters check in the Cy_CSDADC_StartConvert() function
 
 ### Supported Software and Tools
-This version of the CSDIDAC Middleware was validated for compatibility with the following Software and Tools:
+This version of the CSDADC Middleware was validated for compatibility with the following software and tools:
 
-| Software and Tools                                      | Version |
-| :---                                                    | :----:  |
-| ModusToolbox Software Environment                       | 2.0     |
-| - ModusToolbox Device Configurator                      | 2.0     |
-| - ModusToolbox CSD Personality in Device Configurator   | 2.0     |
-| PSoC6 Peripheral Driver Library (PDL)                   | 1.2.0   |
-| GCC Compiler                                            | 7.2.1   |
-| IAR Compiler                                            | 8.32    |
-| ARM Compiler 6                                          | 6.11    |
-| MBED OS                                                 | 5.13.1  |
-| FreeRTOS                                                | 10.0.1  |
+| Software and Tools                                                   | Version |
+| :---                                                                 | :----:  |
+| ModusToolbox™ Software Environment                                   | 2.4.0   |
+| - ModusToolbox™ Device Configurator                                  | 3.10    |
+| - ModusToolbox™ CSD Personality  for PSoC™ 6 in Device Configurator  | 2.0     |
+| - ModusToolbox™ CSD Personality  for PSoC™ 4 in Device Configurator  | 1.1     |
+| PSoC™6 Peripheral Driver Library (PDL)                               | 2.4.0   |
+| PSoC™4 Peripheral Driver Library (PDL)                               | 1.6.0   |
+| GCC Compiler                                                         | 10.3.1  |
+| IAR Compiler                                                         | 8.42.1  |
+| ARM Compiler 6                                                       | 6.13    |
+| MBED OS                                                              | 5.13.1  |
+| FreeRTOS                                                             | 10.0.1  |
 
 ### More information
-The following resources contain more information:
-* [CSDADC Middleware RELEASE.md](./RELEASE.md)
-* [CSDADC Middleware API Reference Guide](https://cypresssemiconductorco.github.io/csdadc/csdadc_api_reference_manual/html/index.html)
-* [ModusToolbox Software Environment, Quick Start Guide, Documentation, and Videos](https://www.cypress.com/products/modustoolbox-software-environment)
-* [CSDADC Middleware Code Example for MBED OS](https://github.com/cypresssemiconductorco)
-* [CSDADC Middleware Code Examples at GITHUB](https://github.com/cypresssemiconductorco)
-* [ModusToolbox Device Configurator Tool Guide](https://www.cypress.com/ModusToolboxDeviceConfig)
-* [CapSense Middleware API Reference Guide](https://cypresssemiconductorco.github.io/capsense/capsense_api_reference_manual/html/index.html)
-* [CSDIDAC Middleware API Reference Guide](https://cypresssemiconductorco.github.io/csdidac/csdidac_api_reference_manual/html/index.html)
-* [PSoC 6 Technical Reference Manual](https://www.cypress.com/documentation/technical-reference-manuals/psoc-6-mcu-psoc-63-ble-architecture-technical-reference)
-* [PSoC 63 with BLE Datasheet Programmable System-on-Chip datasheet](http://www.cypress.com/ds218787)
-* [Cypress Semiconductor](http://www.cypress.com)
-  
+For more information, refer to:
+* CSDADC overview:
+  * [CSDADC Middleware RELEASE.md](./RELEASE.md)
+  * [CSDADC Middleware API Reference Guide](https://infineon.github.io/csdadc/csdadc_api_reference_manual/html/index.html)
+  * [CAPSENSE™ Middleware API Reference Guide](https://infineon.github.io/capsense/capsense_api_reference_manual/html/index.html)
+  * [CSDIDAC Middleware API Reference Guide](https://infineon.github.io/csdidac/csdidac_api_reference_manual/html/index.html)
+* ModusToolbox™ overview:
+  * [ModusToolbox™ Software Environment, Quick Start Guide, Documentation, and Videos](https://www.infineon.com/cms/en/design-support/tools/sdk/modustoolbox-software/)
+  * [ModusToolbox™ Device Configurator Tool Guide](https://documentation.infineon.com/html/modustoolbox-software/en/latest/tool-guide/ModusToolbox_Device_Configurator_Guide.html)
+* Code Examples:
+  * [CSDADC Middleware Code Example for MBED OS](https://github.com/Infineon/mbed-os-example-csdadc)
+  * [CSDADC Middleware Code Examples for PSoC™ 6](https://github.com/Infineon/mtb-example-psoc6-csdadc)
+* General information:
+  * [PSoC™ Technical Reference Manual](https://www.infineon.com/cms/en/search.html#!term=PSoC%20Architecture%20Technical%20Reference%20Manual&view=downloads)
+  * [PSoC™ 63 with BLE Datasheet Programmable System-on-Chip datasheet](http://www.cypress.com/ds218787)
+  * [CAT1 PDL API Reference](https://infineon.github.io/mtb-pdl-cat1/pdl_api_reference_manual/html/index.html)
+  * [CAT2 PDL API Reference](https://infineon.github.io/mtb-pdl-cat2/pdl_api_reference_manual/html/index.html)
+  * [PSoC™ 4000S Family: PSoC™ 4 Architecture Technical Reference Manual (TRM)](https://www.infineon.com/dgdl/Infineon-PSoC_4000S_Family_PSoC_4_Architecture_Technical_Reference_Manual_(TRM)-AdditionalTechnicalInformation-v04_00-EN.pdf?fileId=8ac78c8c7d0d8da4017d0f915c737eb7)
+  * [PSoC™ 4100S and PSoC™ 4100S Plus: PSoC™ 4 Architecture Technical Reference Manual (TRM)](https://www.infineon.com/dgdl/Infineon-PSoC_4100S_and_PSoC_4100S_Plus_PSoC_4_Architecture_TRM-AdditionalTechnicalInformation-v12_00-EN.pdf?fileId=8ac78c8c7d0d8da4017d0f9433460188)
+  * [Infineon Technologies GitHub](https://github.com/Infineon)
+  * [Infineon Technologies](http://www.infineon.com)
+
 ---
-© Cypress Semiconductor Corporation, 2019.
+CYPRESS™ Semiconductor Corporation, 2019-2022.

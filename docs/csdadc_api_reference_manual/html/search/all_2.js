@@ -67,6 +67,5 @@ var searchData=
   ['cy_5fstc_5fcsdadc_5fconfig_5ft',['cy_stc_csdadc_config_t',['../structcy__stc__csdadc__config__t.html',1,'']]],
   ['cy_5fstc_5fcsdadc_5fcontext_5ft',['cy_stc_csdadc_context_t',['../structcy__stc__csdadc__context__t.html',1,'']]],
   ['cy_5fstc_5fcsdadc_5fresult_5ft',['cy_stc_csdadc_result_t',['../structcy__stc__csdadc__result__t.html',1,'']]],
-  ['callback',['Callback',['../group__group__csdadc__callback.html',1,'']]],
-  ['cypress_20csdadc_20middleware_20library',['Cypress CSDADC Middleware Library',['../index.html',1,'']]]
+  ['callback',['Callback',['../group__group__csdadc__callback.html',1,'']]]
 ];
